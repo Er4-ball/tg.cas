@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lex Casino</title>
+    <style>
+        :root {
+            --tg-theme-bg-color: #212121;
+            --tg-theme-text-color: #ffffff;
+            --tg-theme-hint-color: #aaaaaa;
+            --tg-theme-link-color: #8774e1;
+            --tg-theme-button-color: #8774e1;
+            --tg-theme-button-text-color: #ffffff;
+            --tg-theme-secondary-bg-color: #181818;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            margin: 0;
+            padding: 0;
+            transition: all 0.3s;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 15px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .balance {
+            background-color: var(--tg-theme-secondary-bg-color);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .game-card {
+            background-color: var(--tg-theme-secondary-bg-color);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .game-card:hover {
+            transform: scale(1.03);
+        }
+
+        .game-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .game-title {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--tg-theme-hint-color);
+        }
+
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .tab.active {
+            opacity: 1;
+            border-bottom: 2px solid var(--tg-theme-button-color);
+        }
+
+        /* Стили для слотов */
+        .slots-container {
+            text-align: center;
+        }
+
+        .slots-reels {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .reel {
+            width: 70px;
+            height: 70px;
+            background-color: var(--tg-theme-secondary-bg-color);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            overflow: hidden;
+        }
+
+        .bet-controls {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+        }
+
+        .bet-btn {
+            background-color: var(--tg-theme-secondary-bg-color);
+            border: none;
+            color: var(--tg-theme-text-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .bet-btn.active {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+        }
+
+        .spin-btn {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            width: 100%;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* Анимации */
+        @keyframes zoomIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+
+        @keyframes spinWin {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.5); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎰 Lex Casino</h1>
+        <div class="balance" id="balance">1000₿</div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="games">Игры</div>
+        <div class="tab" data-tab="bonus">Бонусы</div>
+        <div class="tab" data-tab="profile">Профиль</div>
+    </div>
+
+    <div class="tab-content active" id="games-tab">
+        <div class="games-grid">
+            <div class="game-card" data-game="slots">
+                <div class="game-icon">🎰</div>
+                <div class="game-title">Слоты</div>
+            </div>
+
+            <div class="game-card" data-game="dice">
+                <div class="game-icon">🎲</div>
+                <div class="game-title">Кости</div>
+            </div>
+
+            <div class="game-card" data-game="roulette">
+                <div class="game-icon">🎡</div>
+                <div class="game-title">Рулетка</div>
+            </div>
+
+            <div class="game-card" data-game="blackjack">
+                <div class="game-icon">🃏</div>
+                <div class="game-title">Блекджек</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="bonus-tab">
+        <h2>🎁 Ежедневный бонус</h2>
+        <p>Возвращайтесь каждый день, чтобы получить бонус!</p>
+        <button id="claim-bonus" class="spin-btn">Получить бонус</button>
+    </div>
+
+    <div class="tab-content" id="profile-tab">
+        <h2>👤 Профиль</h2>
+        <div id="user-stats">
+            <div>ID: <span id="user-id">123456</span></div>
+            <div>Регистрация: <span id="user-reg-date">01.01.2023</span></div>
+        </div>
+
+        <button class="spin-btn" id="show-deposit">💳 Пополнить баланс</button>
+        <button class="spin-btn" style="background: transparent; border: 1px solid var(--tg-theme-button-color);"
+                onclick="showTab('referral')">👥 Рефералы</button>
+    </div>
+
+    <div class="tab-content" id="deposit-tab" style="display: none;">
+        <h2>💳 Пополнение баланса</h2>
+        <div id="deposit-methods">
+            <button class="spin-btn" onclick="tg.sendData(JSON.stringify({type: 'deposit', method: 'crypto'}))">
+                ₿ Криптовалюта
+            </button>
+        </div>
+
+        <div id="crypto-deposit" style="display: none; margin-top: 20px;">
+            <h3>Выберите валюту:</h3>
+            <div style="display: flex; gap: 10px; margin: 15px 0;">
+                <button class="spin-btn crypto-currency" data-currency="BTC" style="padding: 10px;">BTC</button>
+                <button class="spin-btn crypto-currency" data-currency="ETH" style="padding: 10px;">ETH</button>
+                <button class="spin-btn crypto-currency" data-currency="USDT" style="padding: 10px;">USDT</button>
+            </div>
+        </div>
+
+        <button class="spin-btn" style="background: transparent; border: 1px solid var(--tg-theme-button-color);"
+                onclick="showTab('profile')">🔙 Назад</button>
+    </div>
+
+    <div class="tab-content" id="referral-tab" style="display: none;">
+        <!-- Заполняется JavaScript -->
+    </div>
+
+    <!-- Игровые экраны -->
+    <div id="slots-game" class="game-screen" style="display:none;">
+        <div class="slots-container">
+            <h2>🎰 Слоты</h2>
+            <p>Выберите ставку и нажмите "Крутить"</p>
+
+            <div class="slots-reels">
+                <div class="reel" id="reel1">🍒</div>
+                <div class="reel" id="reel2">🍒</div>
+                <div class="reel" id="reel3">🍒</div>
+            </div>
+
+            <div class="bet-controls">
+                <button class="bet-btn" data-bet="10">10₿</button>
+                <button class="bet-btn" data-bet="50">50₿</button>
+                <button class="bet-btn active" data-bet="100">100₿</button>
+                <button class="bet-btn" data-bet="200">200₿</button>
+                <button class="bet-btn" data-bet="500">500₿</button>
+            </div>
+
+            <button class="spin-btn" id="spin-btn">Крутить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Инициализация Telegram WebApp
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // Текущие настройки
+    let currentBet = 100;
+    let balance = 1000;
+    let currentGame = null;
+
+    // Инициализация интерфейса
+    function initInterface() {
+        // Обработчики вкладок
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+
+                if (tab.dataset.tab === 'games') {
+                    document.querySelectorAll('.game-screen').forEach(screen => {
+                        screen.style.display = 'none';
+                    });
+                    currentGame = null;
+                }
+            });
+        });
+
+        // Обработчики игр
+        document.querySelectorAll('.game-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                const gameScreen = document.getElementById(`${card.dataset.game}-game`);
+                if (gameScreen) {
+                    gameScreen.style.display = 'block';
+                    currentGame = card.dataset.game;
+                } else {
+                    tg.showAlert('Эта игра скоро будет добавлена!');
+                }
+            });
+        });
+
+        // Выбор ставки
+        document.querySelectorAll('.bet-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.bet-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentBet = parseInt(btn.dataset.bet);
+            });
+        });
+
+        // Кнопка пополнения
+        document.getElementById('show-deposit').addEventListener('click', () => {
+            document.getElementById('profile-tab').style.display = 'none';
+            document.getElementById('deposit-tab').style.display = 'block';
+        });
+
+        // Получение бонуса
+        document.getElementById('claim-bonus').addEventListener('click', () => {
+            const bonusAmount = Math.floor(Math.random() * 150) + 50;
+            showWinAnimation(bonusAmount);
+            balance += bonusAmount;
+            updateBalance();
+
+            tg.sendData(JSON.stringify({
+                type: 'bonus_claim',
+                amount: bonusAmount
+            }));
+        });
+    }
+
+    // Инициализация платежной системы
+    function initPaymentSystem() {
+        // Выбор криптовалюты
+        document.querySelectorAll('.crypto-currency').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const currency = btn.dataset.currency;
+                tg.sendData(JSON.stringify({
+                    type: 'deposit',
+                    method: 'crypto',
+                    currency: currency
+                }));
+            });
+        });
+
+        // Обработка ответа от бота
+        tg.onEvent('webAppDataReceived', (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'deposit_address') {
+                showDepositAddress(data.currency, data.address);
+            } else if (data.type === 'referral_stats') {
+                showReferralStats(data);
+            }
+        });
+    }
+
+    // Показать адрес для пополнения
+    function showDepositAddress(currency, address) {
+        document.getElementById('deposit-tab').innerHTML = `
+            <h2>Пополнение ${currency}</h2>
+            <p>Отправьте ${currency} на этот адрес:</p>
+            <div class="crypto-address" style="
+                background: var(--tg-theme-secondary-bg-color);
+                padding: 15px;
+                border-radius: 10px;
+                word-break: break-all;
+                text-align: center;
+                margin: 15px 0;
+                font-family: monospace;
+            ">${address}</div>
+            <p>Минимальная сумма: $10 эквивалент</p>
+            <button class="spin-btn" id="check-payment">Проверить платеж</button>
+            <button class="spin-btn" style="background: transparent; border: 1px solid var(--tg-theme-button-color); margin-top: 10px;"
+                onclick="showTab('profile')">Назад</button>
+        `;
+
+        document.getElementById('check-payment').addEventListener('click', () => {
+            tg.sendData(JSON.stringify({
+                type: 'check_payment',
+                currency: currency,
+                address: address
+            }));
+        });
+    }
+
+    // Реферальная система
+    function initReferralSystem() {
+        tg.sendData(JSON.stringify({
+            type: 'get_referral_stats'
+        }));
+    }
+
+    function showReferralStats(data) {
+        document.getElementById('referral-tab').innerHTML = `
+            <h2>Реферальная система</h2>
+            <p>Приглашайте друзей и получайте бонусы!</p>
+
+            <div style="
+                background: var(--tg-theme-secondary-bg-color);
+                padding: 15px;
+                border-radius: 10px;
+                margin: 15px 0;
+            ">
+                <div>🔗 Ваша ссылка:</div>
+                <div style="
+                    word-break: break-all;
+                    font-family: monospace;
+                    margin: 10px 0;
+                    padding: 10px;
+                    background: var(--tg-theme-bg-color);
+                    border-radius: 5px;
+                ">${data.link}</div>
+
+                <button class="spin-btn" onclick="navigator.clipboard.writeText('${data.link}').then(() => tg.showAlert('Ссылка скопирована!'))">
+                    Копировать
+                </button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin: 15px 0;">
+                <div style="text-align: center;">
+                    <div style="font-size: 24px;">${data.count}</div>
+                    <div style="font-size: 14px; opacity: 0.8;">Рефералов</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 24px;">${data.earned}₿</div>
+                    <div style="font-size: 14px; opacity: 0.8;">Заработано</div>
+                </div>
+            </div>
+
+            <button class="spin-btn" onclick="tg.share('${data.share_text}')">
+                📤 Поделиться
+            </button>
+
+            <button class="spin-btn" style="background: transparent; border: 1px solid var(--tg-theme-button-color); margin-top: 10px;"
+                onclick="showTab('profile')">Назад</button>
+        `;
+    }
+
+    // Анимации
+    function initAnimations() {
+        // Добавление CSS анимаций
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes zoomIn {
+                from { transform: scale(0); opacity: 0; }
+                to { transform: scale(1); opacity: 1; }
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes float {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-20px); }
+            }
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                20%, 60% { transform: translateX(-10px); }
+                40%, 80% { transform: translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function showWinAnimation(amount) {
+        const container = document.querySelector('.game-screen') || document.body;
+        const winEl = document.createElement('div');
+        winEl.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-direction: column;
+                z-index: 1000;
+                pointer-events: none;
+            ">
+                <div style="
+                    font-size: 48px;
+                    font-weight: bold;
+                    color: gold;
+                    text-shadow: 0 0 10px rgba(255,215,0,0.7);
+                    animation: zoomIn 1s, float 3s infinite;
+                ">+${amount}₿</div>
+                <div style="
+                    font-size: 24px;
+                    color: white;
+                    margin-top: 10px;
+                    animation: fadeIn 1s;
+                ">ПОБЕДА!</div>
+            </div>
+        `;
+
+        container.appendChild(winEl);
+        setTimeout(() => winEl.remove(), 3000);
+    }
+
+    function showLoseAnimation() {
+        const container = document.querySelector('.game-screen') || document.body;
+        const loseEl = document.createElement('div');
+        loseEl.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+                pointer-events: none;
+            ">
+                <div style="
+                    font-size: 36px;
+                    font-weight: bold;
+                    color: #ff5555;
+                    animation: shake 0.5s;
+                ">ПРОИГРЫШ</div>
+            </div>
+        `;
+
+        container.appendChild(loseEl);
+        setTimeout(() => loseEl.remove(), 1000);
+    }
+
+    // Вспомогательные функции
+    function showTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+        document.getElementById(`${tabName}-tab`).style.display = 'block';
+    }
+
+    function updateBalance() {
+        document.getElementById('balance').textContent = `${balance}₿`;
+    }
+
+    // Игра в слоты
+    document.getElementById('spin-btn').addEventListener('click', () => {
+        if (balance < currentBet) {
+            tg.showAlert('Недостаточно средств!');
+            return;
+        }
+
+        // Снимаем ставку
+        balance -= currentBet;
+        updateBalance();
+
+        // Анимация вращения
+        const spinBtn = document.getElementById('spin-btn');
+        spinBtn.disabled = true;
+        const reels = [
+            document.getElementById('reel1'),
+            document.getElementById('reel2'),
+            document.getElementById('reel3')
+        ];
+
+        // Запускаем анимацию
+        reels.forEach((reel, index) => {
+            reel.innerHTML = '';
+            const virtualReel = document.createElement('div');
+            reel.appendChild(virtualReel);
+
+            for (let i = 0; i < 50; i++) {
+                const symbol = document.createElement('div');
+                symbol.textContent = ['🍒', '🍋', '🍊', '🍇', '🔔', '7', '💎'][Math.floor(Math.random() * 7)];
+                virtualReel.appendChild(symbol);
+            }
+
+            virtualReel.style.transition = `transform ${2 + index * 0.5}s cubic-bezier(0.1, 0.7, 0.1, 1)`;
+            setTimeout(() => {
+                virtualReel.style.transform = 'translateY(-1000px)';
+            }, 10);
+        });
+
+        // Проверка результата после анимации
+        setTimeout(() => {
+            const results = [
+                ['🍒', '🍋', '🍊', '🍇', '🔔', '7', '💎'][Math.floor(Math.random() * 7)],
+                ['🍒', '🍋', '🍊', '🍇', '🔔', '7', '💎'][Math.floor(Math.random() * 7)],
+                ['🍒', '🍋', '🍊', '🍇', '🔔', '7', '💎'][Math.floor(Math.random() * 7)]
+            ];
+
+            let winMultiplier = 0;
+            if (results[0] === results[1] && results[1] === results[2]) {
+                winMultiplier = 10;
+            } else if (results[0] === results[1] || results[1] === results[2]) {
+                winMultiplier = 2;
+            }
+
+            const winAmount = currentBet * winMultiplier;
+            if (winAmount > 0) {
+                balance += winAmount;
+                updateBalance();
+                showWinAnimation(winAmount);
+
+                tg.sendData(JSON.stringify({
+                    type: 'game_result',
+                    game: 'slots',
+                    bet: currentBet,
+                    win: winAmount
+                }));
+            } else {
+                showLoseAnimation();
+
+                tg.sendData(JSON.stringify({
+                    type: 'game_result',
+                    game: 'slots',
+                    bet: currentBet,
+                    win: 0
+                }));
+            }
+
+            // Показываем результаты
+            document.getElementById('reel1').textContent = results[0];
+            document.getElementById('reel2').textContent = results[1];
+            document.getElementById('reel3').textContent = results[2];
+
+            spinBtn.disabled = false;
+        }, 4000);
+    });
+
+    // Инициализация при загрузке
+    tg.ready();
+    initInterface();
+    initPaymentSystem();
+    initReferralSystem();
+    initAnimations();
+</script>
+</body>
+</html>
