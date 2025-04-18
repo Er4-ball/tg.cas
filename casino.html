@@ -291,214 +291,178 @@
 </div>
 
 <script>
-    // Инициализация Telegram WebApp
-    const tg = window.Telegram.WebApp;
-    tg.expand();
+    // 1. Инициализация WebApp с защитой от ошибок
+    let tg;
+    if (window.Telegram && window.Telegram.WebApp) {
+        tg = window.Telegram.WebApp;
+        tg.expand();
+    } else {
+        console.log("Режим тестирования (вне Telegram)");
+        tg = {
+            ready: (f) => { if (typeof f === 'function') f(); },
+            expand: () => console.log("WebApp expanded"),
+            sendData: (data) => console.log("Отправка данных:", data),
+            showAlert: (msg) => alert(msg),
+            onEvent: () => {},
+            close: () => console.log("WebApp closed")
+        };
+    }
 
-    // Текущие настройки
-    let currentBet = 100;
-    let balance = 1000;
-    let currentGame = null;
+    // 2. Состояние приложения
+    const state = {
+        balance: 1000,
+        currentBet: 100,
+        currentGame: null
+    };
 
-    // Инициализация интерфейса
-    function initInterface() {
-        // Обработчики вкладок
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    // 3. Основные функции
+    function updateBalance() {
+        document.getElementById('balance').textContent = `${state.balance}₿`;
+    }
 
-                tab.classList.add('active');
-                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
-
-                if (tab.dataset.tab === 'games') {
-                    document.querySelectorAll('.game-screen').forEach(screen => {
-                        screen.style.display = 'none';
-                    });
-                    currentGame = null;
-                }
-            });
+    function showTab(tabId) {
+        // Скрыть все вкладки
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
         });
 
-        // Обработчики игр
+        // Показать нужную вкладку
+        const tab = document.getElementById(`${tabId}-tab`);
+        if (tab) tab.style.display = 'block';
+
+        // Обновить активную вкладку в меню
+        document.querySelectorAll('.tab').forEach(tabEl => {
+            tabEl.classList.remove('active');
+        });
+        document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+    }
+
+    // 4. Инициализация игр
+    function initGames() {
+        // Обработчик для всех игровых карточек
         document.querySelectorAll('.game-card').forEach(card => {
             card.addEventListener('click', () => {
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                const game = card.dataset.game;
 
-                const gameScreen = document.getElementById(`${card.dataset.game}-game`);
-                if (gameScreen) {
-                    gameScreen.style.display = 'block';
-                    currentGame = card.dataset.game;
+                if (game === 'slots') {
+                    // Показываем игровой экран слотов
+                    showTab('games');
+                    document.getElementById('slots-game').style.display = 'block';
+                    state.currentGame = 'slots';
                 } else {
-                    tg.showAlert('Эта игра скоро будет добавлена!');
+                    // Для других игр показываем сообщение
+                    tg.showAlert(`Игра "${game}" скоро будет доступна!`);
                 }
             });
         });
 
-        // Выбор ставки
+        // Инициализация слотов
+        initSlotsGame();
+    }
+
+    // 5. Игра в слоты
+    function initSlotsGame() {
+        const spinBtn = document.getElementById('spin-btn');
+        const reels = [
+            document.getElementById('reel1'),
+            document.getElementById('reel2'),
+            document.getElementById('reel3')
+        ];
+        const symbols = ['🍒', '🍋', '🍊', '🍇', '🔔', '7', '💎'];
+
+        // Обработчик кнопки "Крутить"
+        spinBtn.addEventListener('click', async () => {
+            if (state.balance < state.currentBet) {
+                tg.showAlert('Недостаточно средств!');
+                return;
+            }
+
+            // Снимаем ставку
+            state.balance -= state.currentBet;
+            updateBalance();
+            spinBtn.disabled = true;
+
+            // Анимация вращения
+            await animateReels(reels, symbols);
+
+            // Определяем результат
+            const results = [
+                symbols[Math.floor(Math.random() * symbols.length)],
+                symbols[Math.floor(Math.random() * symbols.length)],
+                symbols[Math.floor(Math.random() * symbols.length)]
+            ];
+
+            // Показываем результаты
+            reels.forEach((reel, i) => {
+                reel.textContent = results[i];
+            });
+
+            // Проверяем выигрыш
+            const win = calculateWin(results, state.currentBet);
+            if (win > 0) {
+                state.balance += win;
+                showWinAnimation(win);
+                tg.showAlert(`Вы выиграли ${win}₿!`);
+            } else {
+                showLoseAnimation();
+            }
+
+            updateBalance();
+            spinBtn.disabled = false;
+        });
+
+        // Обработчики кнопок ставок
         document.querySelectorAll('.bet-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.bet-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                currentBet = parseInt(btn.dataset.bet);
+                state.currentBet = parseInt(btn.dataset.bet);
             });
         });
-
-        // Кнопка пополнения
-        document.getElementById('show-deposit').addEventListener('click', () => {
-            document.getElementById('profile-tab').style.display = 'none';
-            document.getElementById('deposit-tab').style.display = 'block';
-        });
-
-        // Получение бонуса
-        document.getElementById('claim-bonus').addEventListener('click', () => {
-            const bonusAmount = Math.floor(Math.random() * 150) + 50;
-            showWinAnimation(bonusAmount);
-            balance += bonusAmount;
-            updateBalance();
-
-            tg.sendData(JSON.stringify({
-                type: 'bonus_claim',
-                amount: bonusAmount
-            }));
-        });
     }
 
-    // Инициализация платежной системы
-    function initPaymentSystem() {
-        // Выбор криптовалюты
-        document.querySelectorAll('.crypto-currency').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const currency = btn.dataset.currency;
-                tg.sendData(JSON.stringify({
-                    type: 'deposit',
-                    method: 'crypto',
-                    currency: currency
-                }));
+    // 6. Вспомогательные функции для слотов
+    function animateReels(reels, symbols) {
+        return new Promise(resolve => {
+            let completed = 0;
+            const totalReels = reels.length;
+
+            reels.forEach((reel, index) => {
+                const duration = 1000 + index * 300; // Разное время для каждого барабана
+                const startTime = Date.now();
+
+                const animate = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+
+                    // Показываем случайный символ во время анимации
+                    reel.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        completed++;
+                        if (completed === totalReels) resolve();
+                    }
+                };
+
+                requestAnimationFrame(animate);
             });
         });
-
-        // Обработка ответа от бота
-        tg.onEvent('webAppDataReceived', (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === 'deposit_address') {
-                showDepositAddress(data.currency, data.address);
-            } else if (data.type === 'referral_stats') {
-                showReferralStats(data);
-            }
-        });
     }
 
-    // Показать адрес для пополнения
-    function showDepositAddress(currency, address) {
-        document.getElementById('deposit-tab').innerHTML = `
-            <h2>Пополнение ${currency}</h2>
-            <p>Отправьте ${currency} на этот адрес:</p>
-            <div class="crypto-address" style="
-                background: var(--tg-theme-secondary-bg-color);
-                padding: 15px;
-                border-radius: 10px;
-                word-break: break-all;
-                text-align: center;
-                margin: 15px 0;
-                font-family: monospace;
-            ">${address}</div>
-            <p>Минимальная сумма: $10 эквивалент</p>
-            <button class="spin-btn" id="check-payment">Проверить платеж</button>
-            <button class="spin-btn" style="background: transparent; border: 1px solid var(--tg-theme-button-color); margin-top: 10px;"
-                onclick="showTab('profile')">Назад</button>
-        `;
-
-        document.getElementById('check-payment').addEventListener('click', () => {
-            tg.sendData(JSON.stringify({
-                type: 'check_payment',
-                currency: currency,
-                address: address
-            }));
-        });
+    function calculateWin(results, bet) {
+        if (results[0] === results[1] && results[1] === results[2]) {
+            return results[0] === '7' ? bet * 10 : bet * 5; // Джекпот для 777
+        } else if (results[0] === results[1] || results[1] === results[2]) {
+            return bet * 2;
+        }
+        return 0;
     }
 
-    // Реферальная система
-    function initReferralSystem() {
-        tg.sendData(JSON.stringify({
-            type: 'get_referral_stats'
-        }));
-    }
-
-    function showReferralStats(data) {
-        document.getElementById('referral-tab').innerHTML = `
-            <h2>Реферальная система</h2>
-            <p>Приглашайте друзей и получайте бонусы!</p>
-
-            <div style="
-                background: var(--tg-theme-secondary-bg-color);
-                padding: 15px;
-                border-radius: 10px;
-                margin: 15px 0;
-            ">
-                <div>🔗 Ваша ссылка:</div>
-                <div style="
-                    word-break: break-all;
-                    font-family: monospace;
-                    margin: 10px 0;
-                    padding: 10px;
-                    background: var(--tg-theme-bg-color);
-                    border-radius: 5px;
-                ">${data.link}</div>
-
-                <button class="spin-btn" onclick="navigator.clipboard.writeText('${data.link}').then(() => tg.showAlert('Ссылка скопирована!'))">
-                    Копировать
-                </button>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; margin: 15px 0;">
-                <div style="text-align: center;">
-                    <div style="font-size: 24px;">${data.count}</div>
-                    <div style="font-size: 14px; opacity: 0.8;">Рефералов</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 24px;">${data.earned}₿</div>
-                    <div style="font-size: 14px; opacity: 0.8;">Заработано</div>
-                </div>
-            </div>
-
-            <button class="spin-btn" onclick="tg.share('${data.share_text}')">
-                📤 Поделиться
-            </button>
-
-            <button class="spin-btn" style="background: transparent; border: 1px solid var(--tg-theme-button-color); margin-top: 10px;"
-                onclick="showTab('profile')">Назад</button>
-        `;
-    }
-
-    // Анимации
-    function initAnimations() {
-        // Добавление CSS анимаций
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes zoomIn {
-                from { transform: scale(0); opacity: 0; }
-                to { transform: scale(1); opacity: 1; }
-            }
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-            @keyframes float {
-                0%, 100% { transform: translateY(0); }
-                50% { transform: translateY(-20px); }
-            }
-            @keyframes shake {
-                0%, 100% { transform: translateX(0); }
-                20%, 60% { transform: translateX(-10px); }
-                40%, 80% { transform: translateX(10px); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
+    // 7. Анимации
     function showWinAnimation(amount) {
-        const container = document.querySelector('.game-screen') || document.body;
+        const container = document.querySelector('.container');
         const winEl = document.createElement('div');
         winEl.innerHTML = `
             <div style="
@@ -521,21 +485,14 @@
                     text-shadow: 0 0 10px rgba(255,215,0,0.7);
                     animation: zoomIn 1s, float 3s infinite;
                 ">+${amount}₿</div>
-                <div style="
-                    font-size: 24px;
-                    color: white;
-                    margin-top: 10px;
-                    animation: fadeIn 1s;
-                ">ПОБЕДА!</div>
             </div>
         `;
-
         container.appendChild(winEl);
         setTimeout(() => winEl.remove(), 3000);
     }
 
     function showLoseAnimation() {
-        const container = document.querySelector('.game-screen') || document.body;
+        const container = document.querySelector('.container');
         const loseEl = document.createElement('div');
         loseEl.innerHTML = `
             <div style="
@@ -558,112 +515,35 @@
                 ">ПРОИГРЫШ</div>
             </div>
         `;
-
         container.appendChild(loseEl);
         setTimeout(() => loseEl.remove(), 1000);
     }
 
-    // Вспомогательные функции
-    function showTab(tabName) {
-        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-        document.getElementById(`${tabName}-tab`).style.display = 'block';
-    }
-
-    function updateBalance() {
-        document.getElementById('balance').textContent = `${balance}₿`;
-    }
-
-    // Игра в слоты
-    document.getElementById('spin-btn').addEventListener('click', () => {
-        if (balance < currentBet) {
-            tg.showAlert('Недостаточно средств!');
-            return;
-        }
-
-        // Снимаем ставку
-        balance -= currentBet;
+    // 8. Инициализация приложения
+    function initApp() {
+        // Инициализация интерфейса
         updateBalance();
+        showTab('games');
 
-        // Анимация вращения
-        const spinBtn = document.getElementById('spin-btn');
-        spinBtn.disabled = true;
-        const reels = [
-            document.getElementById('reel1'),
-            document.getElementById('reel2'),
-            document.getElementById('reel3')
-        ];
+        // Инициализация систем
+        initGames();
 
-        // Запускаем анимацию
-        reels.forEach((reel, index) => {
-            reel.innerHTML = '';
-            const virtualReel = document.createElement('div');
-            reel.appendChild(virtualReel);
-
-            for (let i = 0; i < 50; i++) {
-                const symbol = document.createElement('div');
-                symbol.textContent = ['🍒', '🍋', '🍊', '🍇', '🔔', '7', '💎'][Math.floor(Math.random() * 7)];
-                virtualReel.appendChild(symbol);
-            }
-
-            virtualReel.style.transition = `transform ${2 + index * 0.5}s cubic-bezier(0.1, 0.7, 0.1, 1)`;
-            setTimeout(() => {
-                virtualReel.style.transform = 'translateY(-1000px)';
-            }, 10);
+        // Обработчики кнопок
+        document.getElementById('claim-bonus').addEventListener('click', () => {
+            const bonus = Math.floor(Math.random() * 100) + 50;
+            state.balance += bonus;
+            updateBalance();
+            tg.showAlert(`Вы получили бонус ${bonus}₿!`);
         });
 
-        // Проверка результата после анимации
-        setTimeout(() => {
-            const results = [
-                ['🍒', '🍋', '🍊', '🍇', '🔔', '7', '💎'][Math.floor(Math.random() * 7)],
-                ['🍒', '🍋', '🍊', '🍇', '🔔', '7', '💎'][Math.floor(Math.random() * 7)],
-                ['🍒', '🍋', '🍊', '🍇', '🔔', '7', '💎'][Math.floor(Math.random() * 7)]
-            ];
+        document.getElementById('show-deposit').addEventListener('click', () => {
+            showTab('deposit');
+        });
+    }
 
-            let winMultiplier = 0;
-            if (results[0] === results[1] && results[1] === results[2]) {
-                winMultiplier = 10;
-            } else if (results[0] === results[1] || results[1] === results[2]) {
-                winMultiplier = 2;
-            }
-
-            const winAmount = currentBet * winMultiplier;
-            if (winAmount > 0) {
-                balance += winAmount;
-                updateBalance();
-                showWinAnimation(winAmount);
-
-                tg.sendData(JSON.stringify({
-                    type: 'game_result',
-                    game: 'slots',
-                    bet: currentBet,
-                    win: winAmount
-                }));
-            } else {
-                showLoseAnimation();
-
-                tg.sendData(JSON.stringify({
-                    type: 'game_result',
-                    game: 'slots',
-                    bet: currentBet,
-                    win: 0
-                }));
-            }
-
-            // Показываем результаты
-            document.getElementById('reel1').textContent = results[0];
-            document.getElementById('reel2').textContent = results[1];
-            document.getElementById('reel3').textContent = results[2];
-
-            spinBtn.disabled = false;
-        }, 4000);
-    });
-
-    // Инициализация при загрузке
+    // Запуск приложения
     tg.ready();
-    initInterface();
-    initPaymentSystem();
-    initReferralSystem();
-    initAnimations();
+    initApp();
 </script>
 </body>
 </html>
